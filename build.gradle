@@ -1,27 +1,82 @@
 plugins {
     id 'java'
     id 'application'
+    id 'idea'         // Adds IDE support
+    id 'eclipse'      // Adds Eclipse project files
 }
 
 repositories {
     mavenCentral()
 }
 
+// Define versions in one place for maintainability
+ext {
+    sparkVersion = '2.9.4'
+    slf4jVersion = '1.7.36'
+    junitVersion = '5.9.3'
+}
+
 dependencies {
-    implementation 'com.sparkjava:spark-core:2.9.4'  // Spark web framework
-    implementation 'org.slf4j:slf4j-simple:1.7.36'   // Logger implementation
+    implementation "com.sparkjava:spark-core:${sparkVersion}"
+    implementation "org.slf4j:slf4j-simple:${slf4jVersion}"
+    
+    // Test dependencies
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
 }
 
 application {
-    mainClass = 'org.example.App'  // Entry point
+    mainClass = 'org.example.App'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17) // Set Java version
+    }
 }
 
 jar {
     manifest {
-        attributes 'Main-Class': application.mainClass
+        attributes(
+            'Main-Class': application.mainClass,
+            'Implementation-Version': archiveVersion
+        )
     }
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    archiveBaseName = 'my-spark-app' // Customize JAR name
+}
+
+// Configure tests to use JUnit Platform
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
+
+// Generate Javadoc on build
+javadoc {
+    options.encoding = 'UTF-8'
+    options.addBooleanOption('html5', true)
+    options.addStringOption('Xdoclint:none', '-quiet')
+}
+
+
+// Ensure Javadoc is generated during build
+build {
+    dependsOn javadoc
+}
+
+// Create a distribution with startup scripts
+distributions {
+    main {
+        contents {
+            from('src/main/resources') {
+                into 'conf'
+            }
+        }
+    }
 }
